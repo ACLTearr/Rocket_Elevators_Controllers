@@ -1,166 +1,160 @@
 //Default Function to Start Program
-SEQUENCE runElevator
+//SEQUENCE runElevator
     
-    CALL requestElevator
+    //CALL requestElevator
     
-    CALL requestFloor
+    //CALL requestFloor
 
-ENDSEQUENCE
+//ENDSEQUENCE
 
-//Defines Elevator Elements
-DEFINE Elevator
+SET amountOfElevators TO 2
 
-    Floor //Which floor the elevator is currently on
+SET numberOfFloors TO 10
 
-    FloorRequestButton //List of buttons to select floors
+DEFINE Column USING amountOfElevators AND numberOfFloors
 
-    Status //idle, moving, stopped
+    SET elevatorCounter TO 1
 
-    Direction //up, down, null
+    SET callButtonCounter TO 1
 
-    CurrentOccupancy //How many people are in the elevator
+    SET callButtonDirection TO up
 
-    MaxOccupancy //Max number of people that can be in the elevator
+    FOR amountOfElevators
+        SET elevator TO NEW INSTANCE OF Elevator WITH elevatorCounter
+        INCREMENT elevatorCounter
+    ENDFOR
 
-    FloorDisplay // show which floor elevator is on
+    //Expected Outputs//
+    elevator1
+    elevator2
 
-    Doors //List of door statuses
+    FOR (numberOfFloors multiplied by 2 minus 2)
+        SET callButton TO NEW INSTANCE OF CallButton WITH callButtonCounter AND callButtonDirection
+        IF callButtonDirection IS up THEN
+            SET callButtonDirection TO down
+            INCREMENT callButtonCounter
+        ELSE
+            SET callButtonDirection TO up
+        ENDIF
+    ENDFOR
+
+    //Expected Outputs//
+    callButton1up
+    callButton2down
+    callButton2up
+    callButton3down
+    callButton3up
+    callButton4down
+    callButton4up
+    callButton5down
+    callButton5up
+    callButton6down
+    callButton6up
+    callButton7down
+    callButton7up
+    callButton8down
+    callButton8up
+    callButton9down
+    callButton9up
+    callButton10down
+
+    //Sends Elevator to Floor For Pickup
+    SEQUENCE requestElevator
+
+        GET CallButton
+
+        CALL findBestElevator USING CallButton FloorNumber AND CallButton Direction
+
+        SEND bestElevator TO CallButton FloorNumber
+
+        SET Elevator Floor TO CallButton FloorNumber
+
+        SET Elevator ElevatorDoors TO open
+
+        Allow people to enter
+
+        INCREMENT CurrentOccupancy by number of people to enter elevator
+
+        IF CurrentOccupancy is greater than MaxOccupancy THEN
+
+            //Display warning in elevator, wait for people to leave
+
+        ELSE 
+
+            CALL closeDoor USING Elevator ElevatorDoor
+
+        ENDIF
+
+    ENDSEQUENCE
 
 ENDDEFINE
 
-    //Default Elevator States
-    INSTANTIATE elevator1 TO NEW Elevator WITH 1 AND FloorRequestButton AND idle AND null AND null AND 10 AND 1 AND doorsElevator1
-
-    INSTANTIATE elevator2 TO NEW Elevator WITH 10 AND FloorRequestButton AND idle AND null AND null AND 10 AND 1 AND doorsElevator2
-
-//Defines Elevator Columns
-DEFINE Column
-
-    ListOfElevators
-
-    CallButton
-
-ENDDEFINE
-
-    //Column info
-    INSTANTIATE column1 TO NEW Column WITH Elevator AND CallButton
+SET mainColumn TO NEW INSTANCE OF Column
 
 //Defines Call Button Elements
 DEFINE CallButton
 
-    FloorNumber //Floor where button is located
+    SET FloorNumber TO callButtonCounter
 
-    Direction //up or down
-
-    Light //on or off
+    SET Direction TO callButtonDirection
 
 ENDDEFINE
 
-    //Call Buttons for every floor
-    INSTANTIATE callButton1u TO NEW CallButton WITH 1 AND up AND off
+//Defines Elevator Elements
+DEFINE Elevator
 
-    INSTANTIATE callButton2u TO NEW CallButton WITH 2 AND up AND off
+    SET floorCounter TO 1
 
-    INSTANTIATE callButton2d TO NEW CallButton WITH 2 AND down AND off
+    SET Floor TO 1
 
-    INSTANTIATE callButton3u TO NEW CallButton WITH 3 AND up AND off
+    FOR numberOfFloors
 
-    INSTANTIATE callButton3d TO NEW CallButton WITH 3 AND down AND off
+        SET requestFloor TO NEW INSTANCE OF FloorRequestButton WITH floorCounter
+        INCREMENT floorCounter
 
-    INSTANTIATE callButton4u TO NEW CallButton WITH 4 AND up AND off
+    ENDFOR
 
-    INSTANTIATE callButton4d TO NEW CallButton WITH 4 AND down AND off
+    //Expected Outputs
+    requestFloor1
+    requestFloor2
+    requestFloor3
+    requestFloor4
+    requestFloor5
+    requestFloor6
+    requestFloor7
+    requestFloor8
+    requestFloor9
+    requestFloor10
 
-    INSTANTIATE callButton5u TO NEW CallButton WITH 5 AND up AND off
+    SET Status TO idle
 
-    INSTANTIATE callButton5d TO NEW CallButton WITH 5 AND down AND off
+    SET Direction TO notMoving
 
-    INSTANTIATE callButton6u TO NEW CallButton WITH 6 AND down AND off
+    SET CurrentOccupancy TO 0
 
-    INSTANTIATE callButton6d TO NEW CallButton WITH 6 AND up AND off
+    SET MaxOccupancy TO 10 'number specified by elevator installed and specific codes'
 
-    INSTANTIATE callButton7u TO NEW CallButton WITH 7 AND down AND off
+    SET FloorDisplay TO Floor
 
-    INSTANTIATE callButton7d TO NEW CallButton WITH 7 AND up AND off
-
-    INSTANTIATE callButton8u TO NEW CallButton WITH 8 AND down AND off
-
-    INSTANTIATE callButton8d TO NEW CallButton WITH 8 AND up AND off
-
-    INSTANTIATE callButton9u TO NEW CallButton WITH 9 AND down AND off
-
-    INSTANTIATE callButton9d TO NEW CallButton WITH 9 AND up AND off
-
-    INSTANTIATE callButton10d TO NEW CallButton WITH 10 AND up AND off
-
-//Defines Door Elements
-DEFINE Doors
-
-    State //open or closed
+    SET ElevatorDoors TO Doors State
 
 ENDDEFINE
-
-    //Setting Doors For Every Elevator
-    INSTANTIATE doorsElevator1 TO NEW Doors WITH closed
-
-    INSTANTIATE doorsElevator2 TO NEW Doors WITH closed
 
 //Defines Buttons Contained In Elevator Panel
 DEFINE FloorRequestButton
 
-    FloorSelection //one button for every floor in the building
+    SET requestFloor TO floorCounter
 
-    CloseDoors
-
-    OpenDoors
-
-    EmergencyStop
+    SET closeDoorButton TO close
 
 ENDDEFINE
 
-    //Floor selector buttons, along with open and close doors, and emergency stop
-    INSTANTIATE button1 TO NEW FloorRequestButton WITH 1 AND null and null and null
+//Defines Door Elements
+DEFINE Doors
 
-    INSTANTIATE button2 TO NEW FloorRequestButton WITH 2 AND null and null and null
+    SET State TO closed
 
-    INSTANTIATE button3 TO NEW FloorRequestButton WITH 3 AND null and null and null
-
-    INSTANTIATE button4 TO NEW FloorRequestButton WITH 4 AND null and null and null
-
-    INSTANTIATE button5 TO NEW FloorRequestButton WITH 5 AND null and null and null
-
-    INSTANTIATE button6 TO NEW FloorRequestButton WITH 6 AND null and null and null
-
-    INSTANTIATE button7 TO NEW FloorRequestButton WITH 7 AND null and null and null
-
-    INSTANTIATE button8 TO NEW FloorRequestButton WITH 8 AND null and null and null
-
-    INSTANTIATE button9 TO NEW FloorRequestButton WITH 9 AND null and null and null
-
-    INSTANTIATE button10 TO NEW FloorRequestButton WITH 10 AND null and null and null
-
-    INSTANTIATE closeDoors TO NEW FloorRequestButton WITH null AND closed and null and null
-
-    INSTANTIATE openDoors TO NEW FloorRequestButton WITH null AND null and open and null
-
-    INSTANTIATE emergencyStop TO NEW FloorRequestButton WITH null AND null and null and stop
-
-//Sends Elevator to Floor For Pickup
-SEQUENCE requestElevator
-
-    GET CallButton pressed
-
-    CALL findBestElevator USING CallButton Floor AND Direction
-
-    SEND bestElevator TO CallButton FloorNumber
-
-    SET Elevator Doors TO open
-
-    Allow user to enter
-
-    CALL closeDoor USING Elevator Door
-
-ENDSEQUENCE
+ENDDEFINE
 
 //Finding Best Elevator To Send
 SEQUENCE findBestElevator USING CallButton Floor AND Elevator Direction
@@ -171,21 +165,22 @@ SEQUENCE findBestElevator USING CallButton Floor AND Elevator Direction
 
     ELSE
 
-    RETURN next Elevator WHERE CurrentOccupancy is none as bestElevator
+        RETURN next Elevator WHERE CurrentOccupancy is none as bestElevator
 
     ENDIF
 
 ENDSEQUENCE
 
-SEQUENCE closeDoor USING Elevator Door
+//Close door
+SEQUENCE closeDoor USING Elevator ElevatorDoor
 
-    IF FloorRequestButton closeDoors is pressed THEN
+    IF FloorRequestButton closeDoorButton is pressed AND Elevator ElevatorDoors are clear of any obstructions THEN
 
-        SET Elevator Door TO closed
+        SET Elevator ElevatorDoor TO closed
 
     ELSE
 
-        After 5 seconds, SET Elevator Door TO closed
+        After 5 seconds AND Elevator ElevatorDoors are clear of any obstructions, SET Elevator ElevatorDoor TO closed
 
     ENDIF
 
@@ -200,11 +195,11 @@ SEQUENCE requestFloor
 
     CALL moveElevator USING FloorRequestButton Floor
 
-    SET elevator Doors TO open
+    SET Elevator ElevatorDoors TO open
 
     allow users to leave
 
-    SET elevator Doors TO closed
+    SET Elevator ElevatorDoors TO closed
 
     CALL elevatorDefaultPosition WITH Elevator Floor //return to best default position based on where other elevators are
 
