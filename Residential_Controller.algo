@@ -1,0 +1,103 @@
+SEQUENCE runElevator
+    CALL requestElevator
+    CALL requestFloor
+ENDSEQUENCE
+
+SEQUENCE requestElevator
+    GET CallButton pressed
+    CALL findBestElevator
+    SEND best elevator to floor from CallButton
+    SET elevator Doors TO open
+    allow user to enter
+    SET elevator Doors TO closed
+ENDSEQUENCE
+
+SEQUENCE requestFloor
+    GET FloorRequestButtons
+    CHECK FloorRequestButtons is pressed AND MaxOccupancy is not reached
+    CALL moveElevator USING FloorRequestButtons Floor
+    SET elevator Doors TO open
+    allow users to leave
+    SET elevator Doors TO closed
+    CALL elevatorDefaultPosition WITH Elevator Floor //return to best default position based on where other elevators are
+ENDSEQUENCE
+
+DEFINE Elevator
+    Floor //Which floor the elevator is currently on
+    FloorRequestButtons //List of buttons to select floors
+    Status //idle, moving, stopped
+    Direction //up, down, null
+    CurrentOccupancy //How many people are in the elevator
+    MaxOccupancy //Max number of people that can be in the elevator
+    FloorDisplay // show which floor elevator is on
+    Doors //List of door statuses
+ENDDEFINE
+
+//Default Elevator States
+INSTANTIATE elevator1 TO NEW Elevator WITH 1 AND FloorRequestButtons AND idle AND null AND null AND 10 AND 1 AND doorsElevator1
+
+INSTANTIATE elevator2 TO NEW Elevator WITH 10 AND FloorRequestButtons AND idle AND null AND null AND 10 AND 1 AND doorsElevator2
+
+DEFINE Column
+    ListOfElevators
+    CallButton
+ENDDEFINE
+
+DEFINE CallButton
+    FloorNumber //Floor where button is located
+    Direction //up or down
+    Light //on or off
+ENDDEFINE
+
+//Call Buttons for every floor
+INSTANTIATE callButton1u TO NEW CallButton WITH 1 AND up AND off
+
+INSTANTIATE callButton2u TO NEW CallButton WITH 2 AND up AND off
+
+INSTANTIATE callButton2d TO NEW CallButton WITH 2 AND down AND off
+
+INSTANTIATE callButton3u TO NEW CallButton WITH 3 AND up AND off
+
+INSTANTIATE callButton3d TO NEW CallButton WITH 3 AND down AND off
+
+INSTANTIATE callButton4u TO NEW CallButton WITH 4 AND up AND off
+
+INSTANTIATE callButton4d TO NEW CallButton WITH 4 AND down AND off
+
+INSTANTIATE callButton5u TO NEW CallButton WITH 5 AND up AND off
+
+INSTANTIATE callButton5d TO NEW CallButton WITH 5 AND down AND off
+
+INSTANTIATE callButton6u TO NEW CallButton WITH 6 AND down AND off
+
+INSTANTIATE callButton6d TO NEW CallButton WITH 6 AND up AND off
+
+INSTANTIATE callButton7u TO NEW CallButton WITH 7 AND down AND off
+
+INSTANTIATE callButton7d TO NEW CallButton WITH 7 AND up AND off
+
+INSTANTIATE callButton8u TO NEW CallButton WITH 8 AND down AND off
+
+INSTANTIATE callButton8d TO NEW CallButton WITH 8 AND up AND off
+
+INSTANTIATE callButton9u TO NEW CallButton WITH 9 AND down AND off
+
+INSTANTIATE callButton9d TO NEW CallButton WITH 9 AND up AND off
+
+INSTANTIATE callButton10d TO NEW CallButton WITH 10 AND up AND off
+
+DEFINE Doors
+    State //open or closed
+ENDDEFINE
+
+INSTANTIATE doorsElevator1 TO NEW Doors WITH closed
+
+INSTANTIATE doorsElevator2 TO NEW Doors WITH closed
+
+DEFINE FloorRequestButtons
+    FloorSelection //one button for every floor in the building
+    CloseDoors
+    OpenDoors
+    EmergencyStop
+ENDDEFINE
+
