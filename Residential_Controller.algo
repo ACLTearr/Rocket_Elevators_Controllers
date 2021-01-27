@@ -1,208 +1,134 @@
-//Default Function to Start Program
-//SEQUENCE runElevator
-    
-    //CALL requestElevator
-    
-    //CALL requestFloor
+SET numberOfColumns TO 1
 
-//ENDSEQUENCE
+SET amountOfElevatorsPerColumn TO 2
 
-SET amountOfElevators TO 2
+SET numberOfBasements TO 0
 
 SET numberOfFloors TO 10
 
-DEFINE Column USING amountOfElevators AND numberOfFloors
+SET totalFloors TO (numberOfFloors PLUS numberOfBasements)
 
+DEFINE Column USING amountOfElevatorsPerColumn AND totalFloors
     SET elevatorCounter TO 1
-
     SET callButtonCounter TO 1
-
-    SET callButtonDirection TO up
-
-    FOR amountOfElevators
-        SET elevator TO NEW INSTANCE OF Elevator WITH elevatorCounter
+    SET elevatorList
+    SET callButtonList
+    FOR amountOfElevatorsPerColumn
+        SET elevator CONCAT elevatorCounter TO NEW INSTANCE OF Elevator WITH elevatorCounter AND amountOfElevatorsPerColumn
         INCREMENT elevatorCounter
+        ADD TO elevatorList
     ENDFOR
-
-    //Expected Outputs//
-    elevator1
-    elevator2
-
-    FOR (numberOfFloors multiplied by 2 minus 2)
-        SET callButton TO NEW INSTANCE OF CallButton WITH callButtonCounter AND callButtonDirection
-        IF callButtonDirection IS up THEN
-            SET callButtonDirection TO down
-            INCREMENT callButtonCounter
-        ELSE
-            SET callButtonDirection TO up
+    FOR totalFloors
+        IF callButtonCounter NOT EQUAL 1 THEN
+            SET callButton CONCAT callButtonCounter CONCAT down TO NEW INSTANCE OF CallButton WITH callButtonCounter AND down
+            ADD TO callButtonList
         ENDIF
+        IF callButtonCounter NOT EQUAL totalFloors THEN
+            SET callButton CONCAT callButtonCounter CONCAT up TO NEW INSTANCE OF CallButton WITH callButtonCounter AND up
+            ADD TO callButtonList
+        ENDIF
+        INCREMENT callButtonCounter                                    
     ENDFOR
 
-    //Expected Outputs//
-    callButton1up
-    callButton2down
-    callButton2up
-    callButton3down
-    callButton3up
-    callButton4down
-    callButton4up
-    callButton5down
-    callButton5up
-    callButton6down
-    callButton6up
-    callButton7down
-    callButton7up
-    callButton8down
-    callButton8up
-    callButton9down
-    callButton9up
-    callButton10down
-
-    //Sends Elevator to Floor For Pickup
+=====Sends Elevator to Floor For Pickup=====
     SEQUENCE requestElevator
-
-        GET CallButton
-
-        CALL findBestElevator USING CallButton FloorNumber AND CallButton Direction
-
-        SEND bestElevator TO CallButton FloorNumber
-
-        SET Elevator Floor TO CallButton FloorNumber
-
-        SET Elevator ElevatorDoors TO open
-
+        GET callButtonList button pressed
+        CALL findBestElevator USING CallButton:floorNumber AND CallButton:direction
+        SEND bestElevator TO CallButton:floorNumber
+        SET Elevator:elevatorFloor TO CallButton:floorNumber
+        SET Elevator:elevatorDoors:Doors:state TO open
         Allow people to enter
-
-        INCREMENT CurrentOccupancy by number of people to enter elevator
-
-        IF CurrentOccupancy is greater than MaxOccupancy THEN
-
-            //Display warning in elevator, wait for people to leave
-
+        INCREMENT currentOccupancy by number of people to enter elevator
+        IF currentOccupancy is greater than maxOccupancy THEN
+            SET elevatorDisplay TO "MAX OCCUPANCY EXCEEDED" AND wait until currentOccupancy is less than maxOccupancy
         ELSE 
-
-            CALL closeDoor USING Elevator ElevatorDoor
-
+            CALL closeDoor USING Elevator:elevatorDoors:Doors:state
         ENDIF
-
+        =====Finding Best Elevator To Send=====
+        "SEQUENCE findBestElevator USING CallButton Floor AND Elevator Direction
+            IF Elevator Direction is towards CallButton Floor THEN
+                RETURN Elevator as bestElevator
+            ELSE
+                RETURN next Elevator WHERE CurrentOccupancy is none as bestElevator
+            ENDIF
+        ENDSEQUENCE
+        =====Close door=====
+        SEQUENCE closeDoor USING Elevator ElevatorDoor
+            IF ElevataorPanelButton:closeDoors is pressed AND Elevator:elevatorDoors:Doors:state are clear of any obstructions THEN
+                SET Elevator:elevatorDoors:Doors:state TO closed
+            ELSE
+                After 3 seconds AND Elevator:elevatorDoors are clear of any obstructions, SET Elevator:elevatorDoors:Doors:state TO closed
+            ENDIF
+        ENDSEQUENCE"
     ENDSEQUENCE
-
 ENDDEFINE
 
 SET mainColumn TO NEW INSTANCE OF Column
 
-//Defines Call Button Elements
-DEFINE CallButton
-
-    SET FloorNumber TO callButtonCounter
-
-    SET Direction TO callButtonDirection
-
+=====Defines Call Button Elements=====
+DEFINE CallButton USING callButtonCounter AND direction
+    SET id TO callButton CONCAT callButtonCounter CONCAT direction
+    SET floorNumber TO callButtonCounter
+    SET direction TO direction
 ENDDEFINE
 
-//Defines Elevator Elements
-DEFINE Elevator
-
+=====Defines Elevator Elements=====
+DEFINE Elevator USING elevatorCounter AND amountOfElevatorsPerColumn
     SET floorCounter TO 1
+    SET currentFloor TO 1
+    SET id TO elevator CONCAT elevatorCounter
+    SET elevatorButtonsList
 
-    SET Floor TO 1
-
-    FOR numberOfFloors
-
-        SET requestFloor TO NEW INSTANCE OF FloorRequestButton WITH floorCounter
+=====Sets floor selection buttons within elevator=====
+    FOR totalFloors
+        SET requestFloor CONCAT floorCounter TO NEW INSTANCE OF ElevataorPanelButton WITH floorCounter AND null
         INCREMENT floorCounter
-
+        ADD TO elevatorButtonsList
     ENDFOR
 
-    //Expected Outputs
-    requestFloor1
-    requestFloor2
-    requestFloor3
-    requestFloor4
-    requestFloor5
-    requestFloor6
-    requestFloor7
-    requestFloor8
-    requestFloor9
-    requestFloor10
+=====Sets close door button within elevator=====
+    FOR amountOfElevatorsPerColumn
+        SET closeDoors CONCAT elevatorCounter TO NEW INSTANCE OF ElevataorPanelButton WITH null AND closed AND elevatorCounter
+        ADD TO elevatorButtonsList
+    ENDFOR
 
-    SET Status TO idle
-
-    SET Direction TO notMoving
-
-    SET CurrentOccupancy TO 0
-
-    SET MaxOccupancy TO 10 'number specified by elevator installed and specific codes'
-
-    SET FloorDisplay TO Floor
-
-    SET ElevatorDoors TO Doors State
-
+=====Sets open door button within elevator=====
+    FOR amountOfElevatorsPerColumn
+        SET openDoors CONCAT elevatorCounter TO NEW INSTANCE OF ElevataorPanelButton WITH null AND open AND elevatorCounter
+        ADD TO elevatorButtonsList
+    ENDFOR
+    SET elevatorStatus TO idle
+    SET elevatorDirection TO notMoving
+    SET currentOccupancy TO 0
+    SET maxOccupancy TO 10 'number specified by elevator installed and specific codes'
+    SET elevatorDisplay TO elevatorFloor
+    SET elevatorDoors TO Doors
+    =====Sends Elevator To floor For Dropoff=====
+    "SEQUENCE requestFloor
+        GET elevatorButtonsList button pressed
+        CALL moveElevator USING elevatorButtonsList button pressed
+        SET Elevator:elevatorDoors:Doors:state TO open
+        allow users to leave
+        SET Elevator:elevatorDoors:Doors:state TO closed
+        CALL elevatorDefaultPosition WITH Elevator:currentFloor //return to best default position based on where other elevators are
+    ENDSEQUENCE"
 ENDDEFINE
 
-//Defines Buttons Contained In Elevator Panel
-DEFINE FloorRequestButton
-
-    SET requestFloor TO floorCounter
-
-    SET closeDoorButton TO close
-
+=====Defines Buttons Contained In Elevator Panel=====
+DEFINE ElevataorPanelButton USING floorCounter AND elevatorCounter
+    IF requestFloor DOES NOT EQUAL null THEN
+        SET id to requestFloor CONCAT floorCounter
+    ELSE IF closeDoor EQUALS closed THEN
+        SET id to closeDoor CONCAT elevatorCounter
+    ELSE IF openDoor EQUALS open THEN
+        SET id to closeDoor CONCAT elevatorCounter
+    ENDIF
+    SET floorRequested
+    SET closeDoor
+    SET openDoor
 ENDDEFINE
 
-//Defines Door Elements
+=====Defines Door Elements=====
 DEFINE Doors
-
-    SET State TO closed
-
+    SET state TO closed
 ENDDEFINE
-
-//Finding Best Elevator To Send
-SEQUENCE findBestElevator USING CallButton Floor AND Elevator Direction
-
-    IF Elevator Direction is towards CallButton Floor THEN
-
-        RETURN Elevator as bestElevator
-
-    ELSE
-
-        RETURN next Elevator WHERE CurrentOccupancy is none as bestElevator
-
-    ENDIF
-
-ENDSEQUENCE
-
-//Close door
-SEQUENCE closeDoor USING Elevator ElevatorDoor
-
-    IF FloorRequestButton closeDoorButton is pressed AND Elevator ElevatorDoors are clear of any obstructions THEN
-
-        SET Elevator ElevatorDoor TO closed
-
-    ELSE
-
-        After 5 seconds AND Elevator ElevatorDoors are clear of any obstructions, SET Elevator ElevatorDoor TO closed
-
-    ENDIF
-
-ENDSEQUENCE
-
-//Sends Elevator To floor For Dropoff
-SEQUENCE requestFloor
-
-    GET FloorRequestButton
-
-    CHECK FloorRequestButton is pressed AND MaxOccupancy is not reached
-
-    CALL moveElevator USING FloorRequestButton Floor
-
-    SET Elevator ElevatorDoors TO open
-
-    allow users to leave
-
-    SET Elevator ElevatorDoors TO closed
-
-    CALL elevatorDefaultPosition WITH Elevator Floor //return to best default position based on where other elevators are
-
-ENDSEQUENCE
-
-   
