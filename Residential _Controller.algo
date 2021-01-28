@@ -26,6 +26,8 @@ DEFINE ElevatorController USING initialFloor AND direction AND moveToFloor
    
     CALL moveElevator WITH direction AND moveToFloor
 
+    CALL Column:Elevator:elevatorDoors:Doors:closeDoor WITH Column:Elevator:elevatorDoors:Doors
+
 ENDDEFINE
 
 DEFINE Column USING elevatorsPerCOlumn AND numberOfFloors AND numberOfBasements AND floor AND direction
@@ -252,27 +254,21 @@ DEFINE Elevator USING elevatorCounter AND elevatorsPerColumn AND numberOfFloors 
 
             INCREMENT Elevator:currentFloor BY 1 UNTIL Elevator:currentFloor IS EQUAL TO initialFloor OR moveToFloor
 
-            CALL Elevator:elevatorDoors:Doors:openDoor WITH Elevator:elevatorDoors
-
-            SET Elevator:elevatorDirection TO up
-
-            SET Elevator:elevatorStatus TO moving
-
             SET this:Elevator:elevatorFloor TO initialFloor OR moveToFloor
 
         ELSE IF Elevator:currentFloor IS GREATER THAN InitialFloor OR moveToFloor THEN
 
             INCREMENT Elevator:currentFloor BY -1 UNTIL Elevator:currentFloor IS EQUAL TO initialFloor OR moveToFloor
 
-            CALL Elevator:elevatorDoors:Doors:openDoor WITH Elevator:elevatorDoors
-
-            SET Elevator:elevatorDirection TO down
-
-            SET Elevator:elevatorStatus TO moving
-
             SET this:Elevator:elevatorFloor TO initialFloor OR moveToFloor
 
         ENDIF
+
+        CALL Elevator:elevatorDoors:Doors:openDoor WITH Elevator:elevatorDoors
+
+        SET Elevator:elevatorDirection TO up
+
+        SET Elevator:elevatorStatus TO moving
 
     ENDSEQUENCE
 

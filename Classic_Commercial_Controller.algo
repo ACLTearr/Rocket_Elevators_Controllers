@@ -10,31 +10,79 @@ SEQUENCE SCENARIO USING initialFloor and direction AND moveToFloor
 
 ENDSEQUENCE
 
-SET numberOfColumns TO 1
-
-SET elevatorsPerColumn TO 2
-
-SET numberOfBasements TO 0
-
-SET numberOfFloors TO 10
-
-SET columnA TO NEW INSTANCE OF Column WITH elevatorsPerColumn AND numberOfFloors AND numberOfBasements AND floor AND direction
-
 DEFINE ElevatorController USING initialFloor AND direction AND moveToFloor
    
     CALL requestElevator WITH initialFloor AND direction AND moveToFloor
    
-    CALL moveElevator WITH direction AND moveToFloor
+    CALL moveElevator WITH direction AND moveToFloor AND columnFloorsServed
+
+    CALL Column:Elevator:elevatorDoors:Doors:closeDoor WITH Column:Elevator:elevatorDoors:Doors
 
 ENDDEFINE
 
-DEFINE Column USING elevatorsPerCOlumn AND numberOfFloors AND numberOfBasements AND floor AND direction
+SET numberOfBatteries TO 1
+
+DEFINE Battery USING initialFloor AND moveToFloor AND direction
+
+    SET numberOfColumns TO 4
+
+    SET elevatorsPerColumn TO 5
+    
+    SET floorsServed TO (numberOfFloors DIVIDED BY (numberOfColumns MINUS 1 "for basement column") WITH remainder split between (numberOfColumns MINUS 1) columns)
+
+    SET numberOfBasements TO 6
+
+    SET numberOfFloors TO 60
+
+    SET columnCounter TO 1
+
+    SET floorsServedCounter TO 1
+
+    SET columnList
+
+    FOR numberOfColumns
+
+        SET column CONCAT columnCounter TO NEW INSTANCE OF Column WITH elevatorsPerColumn AND numberOfFloors AND numberOfBasements AND floor AND direction AND floorsServed
+
+        LET every Column IN columnList serve floorsServed 
+
+        ADD TO columnList
+
+        INCREMENT columnCounter BY 1
+
+    ENDFOR
+
+=====Sets which floors every column serves=====
+    FOR Column IN columnList EXCEPT FIRST ITEM IN LIST
+
+        IF columnCounter EQUALS 1 THEN
+
+            SET columnFloorsServed TO (floorsServedCounter TO floorsServed)
+
+            INCREMENT floorsServedCounter BY floorsServed MINUS 1
+
+        ELSE
+
+            SET columnFloorsServed TO (floorsServedCounter TO (floorsServedCounter PLUS floorsServed PLUS 1)
+
+            INCREMENT floorsServedCounter BY floorsServed
+
+        ENDIF
+    
+    ENDFOR
+
+ENDDEFINE
+
+=====Defines a column=====
+DEFINE Column USING elevatorsPerColumn AND numberOfFloors AND numberOfBasements AND floor AND direction AND floorsServed
 
     SET elevatorCounter TO 1
 
     SET callButtonCounter TO 1
 
     SET callButtonCounterBasement TO 1
+
+    SET columnFloorsServed TO numberOfBasements
 
     SET elevatorList
 
@@ -43,7 +91,7 @@ DEFINE Column USING elevatorsPerCOlumn AND numberOfFloors AND numberOfBasements 
 =====Set Elevators in every column=====
     FOR elevatorsPerColumn
 
-        SET elevator CONCAT elevatorCounter TO NEW INSTANCE of Elevator WITH elevatorCounter AND elevatorsPerColumn AND numberOfFloors AND numberOfBasements
+        SET elevator CONCAT elevatorCounter TO NEW INSTANCE of Elevator WITH elevatorCounter AND elevatorsPerColumn AND numberOfFloors AND numberOfBasements AND columnFloorsServed
 
         ADD TO elevatorList
 
@@ -93,7 +141,7 @@ DEFINE Column USING elevatorsPerCOlumn AND numberOfFloors AND numberOfBasements 
 
         CALL findBestElevator WITH initialFloor AND direction AND this:elevatorList AND moveToFloor
 
-        CALL this:Elevator:moveElevator WITH initialFloor AND direction AND RETURNED Elevator
+        CALL this:Elevator:moveElevator WITH initialFloor AND direction AND columnFloorsServed AND RETURNED Elevator
 
         //Open Doors called in move elevator function//
 
@@ -103,9 +151,9 @@ DEFINE Column USING elevatorsPerCOlumn AND numberOfFloors AND numberOfBasements 
 
         IF currentOccupancy is greater than maxOccupancy THEN
 
-            SET this:Elevator:elevatorDisplay TO "MAX OCCUPANCY EXCEEDED - PLEASE LEAVE ELEVATOR" AND wait until currentOccupancyis less than maxOccupancy
+            SET this:Elevator:elevatorDisplay:ElevatorDisplayPanel:elevatorScreen TO "MAX OCCUPANCY EXCEEDED - PLEASE LEAVE ELEVATOR" AND wait until currentOccupancyis less than maxOccupancy
 
-            ONCE currentOccupancy IS LESS THAN OR EQUAL TO maxOccupancy SET this:Elevator:elevatorDisplay to this:Elevator:currentFloor
+            ONCE currentOccupancy IS LESS THAN OR EQUAL TO maxOccupancy CALL changeDisplay WITH this:Elevator:currentFloor
 
         ELSE
 
@@ -180,7 +228,7 @@ DEFINE CallButton USING callButtonCounter AND callButtonCounterBasement AND dire
 ENDDEFINE
 
 =====Defones elevator elements=====
-DEFINE Elevator USING elevatorCounter AND elevatorsPerColumn AND numberOfFloors AND numberOfBasements
+DEFINE Elevator USING elevatorCounter AND elevatorsPerColumn AND numberOfFloors AND numberOfBasements AND columnFloorsServed
 
     SET floorCounter TO 1
 
@@ -193,25 +241,31 @@ DEFINE Elevator USING elevatorCounter AND elevatorsPerColumn AND numberOfFloors 
     SET elevatorButtonsList
 
 =====Sets elevator buttons panel=====
-    FOR numberOfFloors
+    IF columnFloorsServed DOES NOT EQUAL numberOfBasements THEN
 
-        SET requestFloor CONCAT floorCounter TO NEW INSTANCE OF ElevatorPanelButton WITH floorCounter
+        FOR columnFloorsServed
 
-        ADD TO elevatorButtonsList
+            SET requestFloor CONCAT floorCounter TO NEW INSTANCE OF ElevatorPanelButton WITH floorCounter
 
-        INCREMENT floorCounter
+            ADD TO elevatorButtonsList
 
-    ENDFOR
+            INCREMENT floorCounter
 
-    FOR numberOfBasements
+        ENDFOR
 
-        SET requestBasement CONCAT basementCounter TO NEW INSTANCE OF ElevatorPanelButton WITH basementCounter
+    ELSE
 
-        ADD TO elevatorButtonsList
+        FOR numberOfBasements
 
-        INCREMENT basementCounter
+            SET requestBasement CONCAT basementCounter TO NEW INSTANCE OF ElevatorPanelButton WITH basementCounter
 
-    ENDFOR
+            ADD TO elevatorButtonsList
+
+            INCREMENT basementCounter
+
+        ENDFOR
+
+    ENDIF
 
 =====Sets close door button=====
     FOR elevatorsPerColumn
@@ -239,40 +293,59 @@ DEFINE Elevator USING elevatorCounter AND elevatorsPerColumn AND numberOfFloors 
 
     SET maxOccupancy TO 10 'real number specified by specific elevator installed adn codes pertaining to that'
 
-    SET elevatorDisplay TO elevatorFloor
+    SET elevatorDisplay TO ElevatorDisplayPanel:elevatorScreen
 
     SET distance TO null
 
     SET elevatorDoors TO Doors:status
 
-=====Sends elevator to floor====
-    SEQUENCE moveElevator USING initialFloor AND direction AND moveToFloor AND RETURNED Elevator
+    SET displayCounter
 
-        IF Elevator:currentFloor IS LESS THAN initialFloor OR moveToFloor THEN
+=====Setting display panel in all elevators=====
+    FOR elevatorsPerCOlumn
+
+        SET elevatorScreen CONCAT displayCounter TO NEW INSTANCE OF ElevatorDisplayPanel WITH Elevator:currentFloor
+
+        INCREMENT displayCounter BY 1
+
+    ENDFOR
+
+=====Sends elevator to floor====
+    SEQUENCE moveElevator USING initialFloor AND direction AND moveToFloor AND columnFloorsServed AND RETURNED Elevator
+
+        IF moveToFloor IS GREATER THAN columnFloorsServed highest floor THEN
+
+            INCREMENT Elevator:currentFloor BY 1 UNTIL Elevator:currentFloor IS EQUAL TO columnFloorsServed highest floor
+
+            SET this:Elevator:currentFloor TO columnFloorsServed highest floor
+
+        ELSE IF moveToFloor IS LESS THAN columnFloorsServed lowest floor THEN
+
+            INCREMENT Elevator:currentFloor BY -1 UNTIL Elevator:currentFloor IS EQUAL TO columnFloorsServed lowest floor
+
+            SET this:Elevator:currentFloor TO columnFloorsServed lowest floor
+
+        ELSE IF Elevator:currentFloor IS LESS THAN initialFloor OR moveToFloor THEN
 
             INCREMENT Elevator:currentFloor BY 1 UNTIL Elevator:currentFloor IS EQUAL TO initialFloor OR moveToFloor
 
-            CALL Elevator:elevatorDoors:Doors:openDoor WITH Elevator:elevatorDoors
-
-            SET Elevator:elevatorDirection TO up
-
-            SET Elevator:elevatorStatus TO moving
-
-            SET this:Elevator:elevatorFloor TO initialFloor OR moveToFloor
+            SET this:Elevator:currentFloor TO initialFloor OR moveToFloor
 
         ELSE IF Elevator:currentFloor IS GREATER THAN InitialFloor OR moveToFloor THEN
 
             INCREMENT Elevator:currentFloor BY -1 UNTIL Elevator:currentFloor IS EQUAL TO initialFloor OR moveToFloor
 
-            CALL Elevator:elevatorDoors:Doors:openDoor WITH Elevator:elevatorDoors
-
-            SET Elevator:elevatorDirection TO down
-
-            SET Elevator:elevatorStatus TO moving
-
-            SET this:Elevator:elevatorFloor TO initialFloor OR moveToFloor
+            SET this:Elevator:currentFloor TO initialFloor OR moveToFloor
 
         ENDIF
+
+        CALL changeDisplay WITH this:Elevator:currentFloor
+
+        CALL Elevator:elevatorDoors:Doors:openDoor WITH Elevator:elevatorDoors
+
+        SET Elevator:elevatorDirection TO up
+
+        SET Elevator:elevatorStatus TO moving
 
     ENDSEQUENCE
 
@@ -334,4 +407,17 @@ DEFINE Doors
  
     ENDSEQUENCE
 
-ENDDEFINE   
+ENDDEFINE 
+
+=====Defines elevator display=====
+DEFINE ElevatorDisplayPanel USING Elevator:currentFloor
+
+    SET elevatorScreen TO Elevator:currentFloor
+
+    SEQUENCE changeDisplay USING Elevator:currentFloor
+
+        SET elevatorScreen TO Elevator:currentFloor
+
+    ENDSEQUENCE 
+
+ENDDEFINE  
