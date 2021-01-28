@@ -1,10 +1,12 @@
-SET floor TO x
+SET initialfloor TO x
 
-SET direction TO y (up or down)
+SET moveToFloor TO y
 
-SEQUENCE SCENARIO USING floor and direction
+SET direction TO z (up or down)
 
-    CALL ElevatorController WITH floor AND direction
+SEQUENCE SCENARIO USING initialFloor and direction AND moveToFloor
+
+    CALL ElevatorController WITH initialFloor AND direction AND moveToFloor
 
 ENDSEQUENCE
 
@@ -18,11 +20,11 @@ SET numberOfFloors TO 10
 
 SET columnA TO NEW INSTANCE OF Column WITH elevatorsPerColumn AND numberOfFloors AND numberOfBasements AND floor AND direction
 
-DEFINE ElevatorController USING floor AND direction
+DEFINE ElevatorController USING initialFloor AND direction AND moveToFloor
    
-    CALL requestElevator WITH floor AND direction
+    CALL requestElevator WITH initialFloor AND direction AND moveToFloor
    
-    CALL moveElevator WITH floor AND direction
+    CALL moveElevator WITH initialFloor AND direction AND moveToFloor
 
 ENDDEFINE
 
@@ -87,13 +89,13 @@ DEFINE Column USING elevatorsPerCOlumn AND numberOfFloors AND numberOfBasements 
     ENDFOR
 
 =====Sends elevator to floor for pickup=====
-    SEQUENCE requestElevator USING floor AND direction AND this:elevatorList
+    SEQUENCE requestElevator USING floor AND direction AND this:elevatorList AND moveToFloor
 
-        CALL findBestElevator WITH floor AND direction AND this:elevatorList
+        CALL findBestElevator WITH floor AND direction AND this:elevatorList AND moveToFloor
 
         CALL this:Elevator:moveElevator WITH floor AND direction AND RETURNED Elevator
 
-        SET this:Elevator:elevatorFloor TO floor
+        SET this:Elevator:elevatorFloor TO initialFloor
 
         //Open Doors called in move elevator function//
 
@@ -114,7 +116,7 @@ DEFINE Column USING elevatorsPerCOlumn AND numberOfFloors AND numberOfBasements 
         ENDIF
 
 =====Finding best elevator=====
-        SEQUENCE findBestElevator USING floor AND direction AND this:elevatorList
+        SEQUENCE findBestElevator USING initialFloor AND direction AND this:elevatorList AND moveToFloor
 
             FOR Elevator IN elevatorList
 
@@ -128,7 +130,7 @@ DEFINE Column USING elevatorsPerCOlumn AND numberOfFloors AND numberOfBasements 
 
                     RETURN Elevator
 
-                ELSE IF Elevator:distance IS LESS THAN all other Elevator:distance AND Elevator:currentDirection IS TOWARDS floor
+                ELSE IF Elevator:distance IS LESS THAN all other Elevator:distance AND Elevator:currentDirection IS TOWARDS initialFloor
 
                     RETURN Elevator
 
@@ -136,11 +138,11 @@ DEFINE Column USING elevatorsPerCOlumn AND numberOfFloors AND numberOfBasements 
 
                     RETURN Elevator
 
-                ELSE IF Elevator:distance IS LESS THAN all other Elevator:distance AND Elevator IS MOVING TO floor
+                ELSE IF Elevator:distance IS LESS THAN all other Elevator:distance AND Elevator IS MOVING TO moveToFloor
 
                     RETURN Elevator
 
-                ELSE IF Elevator:currentDirection IS TOWARDS floor
+                ELSE IF Elevator:currentDirection IS TOWARDS moveToFloor
 
                     RETURN Elevator
 
@@ -246,11 +248,11 @@ DEFINE Elevator USING elevatorCounter AND elevatorsPerColumn AND numberOfFloors 
     SET elevatorDoors TO Doors:status
 
 =====Sends elevator to floor====
-    SEQUENCE moveElevator USING floor AND direction AND RETURNED Elevator
+    SEQUENCE moveElevator USING initialFloor AND direction AND moveToFloor AND RETURNED Elevator
 
-        IF Elevator:currentFloor IS LESS THAN floor THEN
+        IF Elevator:currentFloor IS LESS THAN initialFloor OR moveToFloor THEN
 
-            INCREMENT Elevator:currentFloor BY 1 UNTIL Elevator:currentFloor IS EQUAL TO floor
+            INCREMENT Elevator:currentFloor BY 1 UNTIL Elevator:currentFloor IS EQUAL TO InitialFloor OR moveToFloor
 
             CALL Elevator:elevatorDoors:Doors:openDoor WITH Elevator:elevatorDoors
 
@@ -258,9 +260,9 @@ DEFINE Elevator USING elevatorCounter AND elevatorsPerColumn AND numberOfFloors 
 
             SET Elevator:elevatorStatus TO moving
 
-        ELSE IF Elevator:currentFloor IS GREATER THAN floor THEN
+        ELSE IF Elevator:currentFloor IS GREATER THAN InitialFloor OR moveToFloor THEN
 
-            INCREMENT Elevator:currentFloor BY -1 UNTIL Elevator:currentFloor IS EQUAL TO floor
+            INCREMENT Elevator:currentFloor BY -1 UNTIL Elevator:currentFloor IS EQUAL TO initialFloor OR moveToFloor
 
             CALL Elevator:elevatorDoors:Doors:openDoor WITH Elevator:elevatorDoors
 
