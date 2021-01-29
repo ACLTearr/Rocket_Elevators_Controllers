@@ -12,9 +12,9 @@ ENDSEQUENCE
 
 DEFINE ElevatorController USING initialFloor AND direction AND moveToFloor
    
-    CALL requestElevator WITH initialFloor AND direction AND moveToFloor
+    CALL Battery:Column:requestElevator WITH initialFloor AND direction AND moveToFloor
    
-    CALL moveElevator WITH direction AND moveToFloor AND columnFloorsServed
+    CALL Battery:Column:Elevator:moveElevator WITH direction AND moveToFloor AND columnFloorsServed
 
     CALL Column:Elevator:elevatorDoors:Doors:closeDoor WITH Column:Elevator:elevatorDoors:Doors
 
@@ -137,9 +137,9 @@ DEFINE Column USING elevatorsPerColumn AND numberOfFloors AND numberOfBasements 
     ENDFOR
 
 =====Sends elevator to floor for pickup=====
-    SEQUENCE requestElevator USING initialFloor AND direction AND this:elevatorList AND moveToFloor
+    SEQUENCE requestElevator USING initialFloor AND direction AND this:elevatorList AND moveToFloor AND columnFloorsServed
 
-        CALL findBestElevator WITH initialFloor AND direction AND this:elevatorList AND moveToFloor
+        CALL this:findBestElevator WITH initialFloor AND direction AND this:elevatorList AND moveToFloor AND columnFloorsServed
 
         CALL this:Elevator:moveElevator WITH initialFloor AND direction AND columnFloorsServed AND RETURNED Elevator
 
@@ -149,58 +149,66 @@ DEFINE Column USING elevatorsPerColumn AND numberOfFloors AND numberOfBasements 
 
         INCREMENT currentOccupancy by number of people to enter elevator
 
-        IF currentOccupancy is greater than maxOccupancy THEN
+        REPEAT
 
-            SET this:Elevator:elevatorDisplay:ElevatorDisplayPanel:elevatorScreen TO "MAX OCCUPANCY EXCEEDED - PLEASE LEAVE ELEVATOR" AND wait until currentOccupancyis less than maxOccupancy
+            IF currentOccupancy is greater than maxOccupancy THEN
 
-            ONCE currentOccupancy IS LESS THAN OR EQUAL TO maxOccupancy CALL changeDisplay WITH this:Elevator:currentFloor
+                SET this:Elevator:elevatorDisplay:ElevatorDisplayPanel:elevatorScreen TO "MAX OCCUPANCY EXCEEDED - PLEASE LEAVE ELEVATOR"
 
-        ELSE
+            ELSE
 
-            CALL this:Elevator:elevatorDoors:Doors:closeDoor WITH this:Elevator:elevatorDoors:Doors AND this:Elevator:elevatorButtonsList
+                CALL this:Elevator:elevatorDoors:Doors:closeDoor WITH this:Elevator:elevatorDoors:Doors AND this:Elevator:elevatorButtonsList
 
-        ENDIF
+                CALL this:Elevator:elevatorDisplay:ElevatorDisplayPanel:changeDisplay WITH this:Elevator:currentFloor
+
+            ENDIF
+
+        UNTIL currentOccupancy IS LESS THAN OR EQUAL TO maxOccupancy
+
+    ENDSEQUENCE
 
 =====Finding best elevator=====
-        SEQUENCE findBestElevator USING initialFloor AND direction AND this:elevatorList AND moveToFloor
+    SEQUENCE findBestElevator USING initialFloor AND direction AND this:elevatorList AND moveToFloor AND columnFloorsServed
 
-            FOR Elevator IN elevatorList
+        FOR Elevator IN elevatorList
 
-                CALCULATE ABSOLUTE VALUE OF (Elevator:currentFloor MINUS initialFloor) AND RETURN AS Elevator:distance
+            CALCULATE ABSOLUTE VALUE OF (Elevator:currentFloor MINUS initialFloor) AND SET TO Elevator:distance
 
-                IF Elevator:distance EQUALS 0 AND Elevator:status IS idle THEN
+            IF initialFloor IS outside range OF columnFloorsServed THEN
 
-                    RETURN Elevator
+                //Do nothing, skip elevator as it does not serve requested floor
 
-                ELSE IF Elevator:distance EQUALS 0 THEN
+            ELSE IF Elevator:distance EQUALS 0 AND Elevator:status IS idle THEN
 
-                    RETURN Elevator
+                RETURN Elevator
 
-                ELSE IF Elevator:distance IS LESS THAN all other Elevator:distance AND Elevator:currentDirection IS TOWARDS initialFloor
+            ELSE IF Elevator:distance EQUALS 0 THEN
 
-                    RETURN Elevator
+                RETURN Elevator
 
-                ELSE IF Elevator:distance IS LESS THAN all other Elevator:distance AND Elevator:status IS idle
+            ELSE IF Elevator:distance IS LESS THAN all other Elevator:distance AND Elevator:currentDirection IS TOWARDS initialFloor
 
-                    RETURN Elevator
+                RETURN Elevator
 
-                ELSE IF Elevator:distance IS LESS THAN all other Elevator:distance AND Elevator IS MOVING TO moveToFloor
+            ELSE IF Elevator:distance IS LESS THAN all other Elevator:distance AND Elevator:status IS idle
 
-                    RETURN Elevator
+                RETURN Elevator
 
-                ELSE IF Elevator:currentDirection IS TOWARDS moveToFloor
+            ELSE IF Elevator:distance IS LESS THAN all other Elevator:distance AND Elevator IS MOVING TO moveToFloor
 
-                    RETURN Elevator
+                RETURN Elevator
 
-                ELSE IF Elevator:currentOccupancy IS EQUAL TO 0 OR Elevator:elevatorStatus IS idle THEN
+            ELSE IF Elevator:currentDirection IS TOWARDS moveToFloor
 
-                    RETURN Elevator
+                RETURN Elevator
 
-                ENDIF
+            ELSE IF Elevator:currentOccupancy IS EQUAL TO 0 OR Elevator:elevatorStatus IS idle THEN
 
-            ENDFOR
+                RETURN Elevator
 
-        ENDSEQUENCE
+            ENDIF
+
+        ENDFOR
 
     ENDSEQUENCE
 

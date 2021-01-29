@@ -22,9 +22,9 @@ SET columnA TO NEW INSTANCE OF Column WITH elevatorsPerColumn AND numberOfFloors
 
 DEFINE ElevatorController USING initialFloor AND direction AND moveToFloor
    
-    CALL requestElevator WITH initialFloor AND direction AND moveToFloor
+    CALL Column:requestElevator WITH initialFloor AND direction AND moveToFloor
    
-    CALL moveElevator WITH direction AND moveToFloor
+    CALL Column:Elevator:moveElevator WITH direction AND moveToFloor
 
     CALL Column:Elevator:elevatorDoors:Doors:closeDoor WITH Column:Elevator:elevatorDoors:Doors
 
@@ -103,24 +103,28 @@ DEFINE Column USING elevatorsPerCOlumn AND numberOfFloors AND numberOfBasements 
 
         INCREMENT currentOccupancy by number of people to enter elevator
 
-        IF currentOccupancy is greater than maxOccupancy THEN
+        REPEAT
 
-            SET this:Elevator:elevatorDisplay TO "MAX OCCUPANCY EXCEEDED - PLEASE LEAVE ELEVATOR" AND wait until currentOccupancyis less than maxOccupancy
+            IF currentOccupancy is greater than maxOccupancy THEN
 
-            ONCE currentOccupancy IS LESS THAN OR EQUAL TO maxOccupancy SET this:Elevator:elevatorDisplay to this:Elevator:currentFloor
+                SET this:Elevator:elevatorDisplay:ElevatorDisplayPanel:elevatorScreen TO "MAX OCCUPANCY EXCEEDED - PLEASE LEAVE ELEVATOR"
 
-        ELSE
+            ELSE
 
-            CALL this:Elevator:elevatorDoors:Doors:closeDoor WITH this:Elevator:elevatorDoors:Doors AND this:Elevator:elevatorButtonsList
+                CALL this:Elevator:elevatorDoors:Doors:closeDoor WITH this:Elevator:elevatorDoors:Doors AND this:Elevator:elevatorButtonsList
 
-        ENDIF
+                SET this:Elevator:elevatorDisplay to this:Elevator:currentFloor
+
+            ENDIF
+
+        UNTIL currentOccupancy IS LESS THAN OR EQUAL TO maxOccupancy
 
 =====Finding best elevator=====
         SEQUENCE findBestElevator USING initialFloor AND direction AND this:elevatorList AND moveToFloor
 
             FOR Elevator IN elevatorList
 
-                CALCULATE ABSOLUTE VALUE OF (Elevator:currentFloor MINUS initialFloor) AND RETURN AS Elevator:distance
+                CALCULATE ABSOLUTE VALUE OF (Elevator:currentFloor MINUS initialFloor) AND SET TO Elevator:distance
 
                 IF Elevator:distance EQUALS 0 AND Elevator:status IS idle THEN
 

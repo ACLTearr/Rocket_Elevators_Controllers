@@ -1,63 +1,121 @@
-SEQUENCE SCENARIO
+SET initialfloor TO x
 
-    SET floor TO x
+SET moveToFloor TO y
 
-    SET direction TO y (up or down)
+SET direction TO z (up or down)
 
-    CALL ElevatorController WITH floor AND direction
+SEQUENCE SCENARIO USING initialFloor and direction AND moveToFloor
+
+    CALL ElevatorController WITH initialFloor AND direction AND moveToFloor
 
 ENDSEQUENCE
 
-SET numberOfColumns TO 1
+DEFINE ElevatorController USING initialFloor AND direction AND moveToFloor
 
-SET elevatorsPerColumn TO 2
+    CALL Battery:selectColumn WITH initialFloor AND direction AND moveToFloor
+   
+    CALL Battery:Column:requestElevator WITH initialFloor AND direction AND moveToFloor AND columnRequired
+   
+    CALL Battery:Column:Elevator:moveElevator WITH direction AND moveToFloor AND columnFloorsServed
 
-SET numberOfBasements TO 0
+    CALL Column:Elevator:elevatorDoors:Doors:closeDoor WITH Column:Elevator:elevatorDoors:Doors
 
-SET numberOfFloors TO 10
-
-SET totalFloors TO (numberOfFloors PLUS numberOfBasements)
-
-SET columnA TO NEW INSTANCE OF Column
-
-DEFINE ElevatorController USING floor AND direction
-    CALL requestElevator WITH floor AND direction
-    CALL moveElevator WITH floor AND direction
 ENDDEFINE
 
-DEFINE Column USING elevatorsPerColumn AND totalFloors AND numberOfFloors AND numberOfBasements AND floor AND direction
+SET numberOfBatteries TO 1
+
+DEFINE Battery USING initialFloor AND moveToFloor AND direction
+
+    SET numberOfColumns TO 4
+
+    SET elevatorsPerColumn TO 5
+    
+    SET floorsServed TO (numberOfFloors DIVIDED BY (numberOfColumns MINUS 1 "for basement column") WITH remainder split between (numberOfColumns MINUS 1) columns)
+
+    SET numberOfBasements TO 6
+
+    SET numberOfFloors TO 60
+
+    SET columnCounter TO 1
+
+    SET floorsServedCounter TO 1
+
+    SET columnList
+
+    FOR numberOfColumns
+
+        SET column CONCAT columnCounter TO NEW INSTANCE OF Column WITH elevatorsPerColumn AND numberOfFloors AND numberOfBasements AND floor AND direction AND floorsServed
+
+        LET every Column IN columnList serve floorsServed 
+
+        ADD TO columnList
+
+        INCREMENT columnCounter BY 1
+
+    ENDFOR
+
+=====Sets which floors every column serves=====
+    FOR Column IN columnList EXCEPT FIRST ITEM IN LIST
+
+        IF columnCounter EQUALS 1 THEN
+
+            SET columnFloorsServed TO (floorsServedCounter TO floorsServed)
+
+            INCREMENT floorsServedCounter BY floorsServed MINUS 1
+
+        ELSE
+
+            SET columnFloorsServed TO (floorsServedCounter TO (floorsServedCounter PLUS floorsServed PLUS 1)
+
+            INCREMENT floorsServedCounter BY floorsServed
+
+        ENDIF
+    
+    ENDFOR
+
+=====Selecting column required=====
+    SEQUENCE selectColumn USING initialFloor AND direction AND moveToFloor
+
+    IF 
+
+    ENDSEQUENCE
+
+ENDDEFINE
+
+=====Defines a column=====
+DEFINE Column USING elevatorsPerColumn AND numberOfFloors AND numberOfBasements AND floor AND direction AND floorsServed
 
     SET elevatorCounter TO 1
 
     SET callButtonCounter TO 1
 
+    SET callButtonCounterBasement TO 1
+
+    SET columnFloorsServed TO numberOfBasements
+
     SET elevatorList
 
     SET callButtonList
 
-=====Set elevators in every column=====
+=====Set Elevators in every column=====
     FOR elevatorsPerColumn
 
-        SET elevator CONCAT elevatorCounter TO NEW INSTANCE OF Elevator WITH elevatorCounter AND elevatorsPerColumn AND numberOfFloors AND numberOfBasements
-
-        INCREMENT elevatorCounter
+        SET elevator CONCAT elevatorCounter TO NEW INSTANCE of Elevator WITH elevatorCounter AND elevatorsPerColumn AND numberOfFloors AND numberOfBasements AND columnFloorsServed
 
         ADD TO elevatorList
 
+        INCREMENT elevatorCounter BY 1
+
     ENDFOR
 
-=====Set call buttons on every floor===== "Configure for basements"
-    FOR totalFloors
+=====Set call buttons on every floor=====
+    FOR numberOfFloors
 
-        IF callButtonCounter NOT EQUAL 1 THEN
+        SET callButton CONCAT callButtonCounter CONCAT down TO NEW INSTANCE OF CallButton WITH callButtonCounter AND down
 
-            SET callButton CONCAT callButtonCounter CONCAT down TO NEW INSTANCE OF CallButton WITH callButtonCounter AND down
+        ADD TO callButtonList
 
-            ADD TO callButtonList
-
-        ENDIF
-
-        IF callButtonCounter NOT EQUAL numberOfFloors THEN
+        IF callButtonCounter DOES NOT EQUAL numberOfFloors THEN
 
             SET callButton CONCAT callButtonCounter CONCAT up TO NEW INSTANCE OF CallButton WITH callButtonCounter AND up
 
@@ -65,85 +123,129 @@ DEFINE Column USING elevatorsPerColumn AND totalFloors AND numberOfFloors AND nu
 
         ENDIF
 
-        INCREMENT callButtonCounter                                    
+        INCREMENT callButtonCounter
 
     ENDFOR
 
-=====Sends Elevator to Floor For Pickup=====
-    SEQUENCE requestElevator USING floor AND direction AND this:elevatorList
+    FOR numberOfBasements
 
-        CALL findBestElevator WITH floor AND direction AND this:elevatorList
+        SET callButton CONCAT Basement CONCAT callButtonCounterBasement CONCAT up TO NEW INSTANCE OF CallButton WITH callButtonCounterBasement AND up
 
-        CALL this:Elevator:moveElevator WITH floor AND direction AND Elevator
+        ADD TO callButtonList
 
-        SET this:Elevator:elevatorFloor TO floor
+        IF callButtonCounterBasement DOES NOT EQUAL numberOfBasements THEN
 
-        CALL this:Elevator:elevatorDoores:Doors:openDoor WITH this:Elevator:elevatorDoors:Doors
+            SET callButton CONCAT Basement CONCAT callButtonCounterBasement CONCAT down TO NEW INSTANCE OF CallButton WITH callButtonCounterBasement AND down
+
+            ADD TO callButtonList
+
+        ENDIF
+
+        INCREMENT callButtonCounterBasement
+
+    ENDFOR
+
+=====Sends elevator to floor for pickup=====
+    SEQUENCE requestElevator USING initialFloor AND direction AND this:elevatorList AND moveToFloor AND columnFloorsServed
+
+        CALL this:findBestElevator WITH initialFloor AND direction AND this:elevatorList AND moveToFloor AND columnFloorsServed
+
+        CALL this:Elevator:moveElevator WITH initialFloor AND direction AND columnFloorsServed AND RETURNED Elevator
+
+        //Open Doors called in move elevator function//
 
         Allow people to enter
 
         INCREMENT currentOccupancy by number of people to enter elevator
 
-        IF currentOccupancy is greater than maxOccupancy THEN
+        REPEAT
 
-            SET Elevator:elevatorDisplay TO "MAX OCCUPANCY EXCEEDED - PLEASE LEAVE ELEVATOR" AND wait until currentOccupancy is less than maxOccupancy
+            IF currentOccupancy is greater than maxOccupancy THEN
 
-        ELSE 
+                SET this:Elevator:elevatorDisplay:ElevatorDisplayPanel:elevatorScreen TO "MAX OCCUPANCY EXCEEDED - PLEASE LEAVE ELEVATOR"
 
-            CALL this:Elevator:elevatorDoors:Doors:closeDoor WITH this:Elevator:elevatorDoors:Doors AND this:Elevator:elevatorButtonsList
-        
-        ENDIF
+            ELSE
 
-        =====Finding Best Elevator To Send=====
-        SEQUENCE findBestElevator USING floor AND direction AND this:elevatorList
+                CALL this:Elevator:elevatorDoors:Doors:closeDoor WITH this:Elevator:elevatorDoors:Doors AND this:Elevator:elevatorButtonsList
 
-            FOR Elevator IN this:elevatorList
+                CALL this:Elevator:elevatorDisplay:ElevatorDisplayPanel:changeDisplay WITH this:Elevator:currentFloor
 
-                CALCULATE ABSOLUTE VALUE OF (Elevator:currentFloor MINUS floor) AND RETURN AS Elevator:distance
+            ENDIF
 
-                IF Elevator:distance EQUALS 0 THEN
+        UNTIL currentOccupancy IS LESS THAN OR EQUAL TO maxOccupancy
 
-                    RETURN Elevator
+    ENDSEQUENCE
 
-                ELSE IF Elevator:distance IS less than all other Elevator:distance AND Elevator:direction EQUALS direction THEN
+=====Finding best elevator=====
+    SEQUENCE findBestElevator USING initialFloor AND direction AND this:elevatorList AND moveToFloor AND columnFloorsServed
 
-                    RETURN Elevator 
+        FOR Elevator IN elevatorList
 
-                ELSE IF Elevator:currentOccupancy IS EQUAL TO 0 THEN
+            CALCULATE ABSOLUTE VALUE OF (Elevator:currentFloor MINUS initialFloor) AND SET TO Elevator:distance
 
-                    RETURN Elevator
+            IF initialFloor IS outside range OF columnFloorsServed THEN
 
-                ENDIF
+                //Do nothing, skip elevator as it does not serve requested floor
 
-            ENDFOR
- 
-        ENDSEQUENCE
- 
+            ELSE IF Elevator:distance EQUALS 0 AND Elevator:status IS idle THEN
+
+                RETURN Elevator
+
+            ELSE IF Elevator:distance EQUALS 0 THEN
+
+                RETURN Elevator
+
+            ELSE IF Elevator:distance IS LESS THAN all other Elevator:distance AND Elevator:currentDirection IS TOWARDS initialFloor
+
+                RETURN Elevator
+
+            ELSE IF Elevator:distance IS LESS THAN all other Elevator:distance AND Elevator:status IS idle
+
+                RETURN Elevator
+
+            ELSE IF Elevator:distance IS LESS THAN all other Elevator:distance AND Elevator IS MOVING TO moveToFloor
+
+                RETURN Elevator
+
+            ELSE IF Elevator:currentDirection IS TOWARDS moveToFloor
+
+                RETURN Elevator
+
+            ELSE IF Elevator:currentOccupancy IS EQUAL TO 0 OR Elevator:elevatorStatus IS idle THEN
+
+                RETURN Elevator
+
+            ENDIF
+
+        ENDFOR
+
     ENDSEQUENCE
 
 ENDDEFINE
 
-=====Defines Call Button Elements=====
-DEFINE CallButton USING callButtonCounter AND direction AND callButtonCounterBasement
+=====Defines call button elements=====
+DEFINE CallButton USING callButtonCounter AND callButtonCounterBasement AND direction
 
-    IF SENT WITH callButtonCounterBasement THEN 
-    
-        SET id TO callButton CONCAT callButtonCounterBasement CONCAT direction
+    IF SENT WITH callButtonCounterBasement THEN
 
-    ELSE 
-    
+        SET id TO callButtoin CONCAT callButtonCounterBasement CONCAT direction
+
+        SET callButtonFloor TO callButtonCounterBasement
+
+    ELSE
+
         SET id TO callButton CONCAT callButtonCounter CONCAT direction
 
-    ENDIF
+        SET callButtonFloor TO callButtonCounter
 
-    SET callButtonFloor TO callButtonCounter
+    ENDIF
 
     SET callButtonDirection TO direction
 
 ENDDEFINE
 
-=====Defines Elevator Elements=====
-DEFINE Elevator USING elevatorCounter AND elevatorsPerColumn AND numberOfFloors AND numberOfBasements AND elevatorCounter
+=====Defones elevator elements=====
+DEFINE Elevator USING elevatorCounter AND elevatorsPerColumn AND numberOfFloors AND numberOfBasements AND columnFloorsServed
 
     SET floorCounter TO 1
 
@@ -155,74 +257,119 @@ DEFINE Elevator USING elevatorCounter AND elevatorsPerColumn AND numberOfFloors 
 
     SET elevatorButtonsList
 
-=====Sets floor selection buttons within elevator=====
-    FOR numberOfFloors
+=====Sets elevator buttons panel=====
+    IF columnFloorsServed DOES NOT EQUAL numberOfBasements THEN
 
-        SET requestFloor CONCAT floorCounter TO NEW INSTANCE OF ElevataorPanelButton WITH floorCounter
+        FOR columnFloorsServed
 
-        INCREMENT floorCounter
+            SET requestFloor CONCAT floorCounter TO NEW INSTANCE OF ElevatorPanelButton WITH floorCounter
+
+            ADD TO elevatorButtonsList
+
+            INCREMENT floorCounter
+
+        ENDFOR
+
+    ELSE
+
+        FOR numberOfBasements
+
+            SET requestBasement CONCAT basementCounter TO NEW INSTANCE OF ElevatorPanelButton WITH basementCounter
+
+            ADD TO elevatorButtonsList
+
+            INCREMENT basementCounter
+
+        ENDFOR
+
+    ENDIF
+
+=====Sets close door button=====
+    FOR elevatorsPerColumn
+
+        SET closeDoors CONCAT elevatorCounter TO NEW INSTANCE OF ElevatorPanelButton WITH close AND elevatorCounter
 
         ADD TO elevatorButtonsList
 
     ENDFOR
 
-    FOR numberOfBasements
+=====Sets open door button=====
+    FOR elevatorsPerCOlumn
 
-        SET requestBasement CONCAT floorCounter TO NEW INSTANCE OF ElevataorPanelButton WITH basementCounter
-
-        INCREMENT basementCounter
-
-    ENDFOR
-
-=====Sets close door button within elevator=====
-    FOR elevatorsPerColumn
-
-        SET closeDoors CONCAT elevatorCounter TO NEW INSTANCE OF ElevataorPanelButton WITH closed AND elevatorCounter
-
-        ADD TO elevatorButtonsList
-
-    ENDFOR
-
-=====Sets open door button within elevator=====
-    FOR elevatorsPerColumn
-
-        SET openDoors CONCAT elevatorCounter TO NEW INSTANCE OF ElevataorPanelButton WITH open AND elevatorCounter
+        SET openDoors CONCAT elevatorCounter TO NEW INSTANCE OF ElevatorPanelButton WITH open AND elevatorCounter
 
         ADD TO elevatorButtonsList
 
     ENDFOR
 
     SET elevatorStatus TO idle
-
+    
     SET elevatorDirection TO notMoving
 
     SET currentOccupancy TO 0
 
-    SET maxOccupancy TO 10 'number specified by elevator installed and specific codes'
+    SET maxOccupancy TO 10 'real number specified by specific elevator installed adn codes pertaining to that'
 
-    SET elevatorDisplay TO elevatorFloor
+    SET elevatorDisplay TO ElevatorDisplayPanel:elevatorScreen
 
     SET distance TO null
 
     SET elevatorDoors TO Doors:status
 
-    =====Sends Elevator To floor For Dropoff=====
-    SEQUENCE moveElevator USING floor AND direction AND this:Elevator
+    SET displayCounter
 
-        IF this:Elevator:currentFloor IS less than floor THEN
+=====Setting display panel in all elevators=====
+    FOR elevatorsPerCOlumn
 
-            INCREMENT this:Elevator:currentFloor BY 1 UNTIL this:Elevator:currentFloor IS EQUAL TO floor
-            set direction and status
-        ELSE IF this:Elevator:currentFloor IS greater than floor THEN
+        SET elevatorScreen CONCAT displayCounter TO NEW INSTANCE OF ElevatorDisplayPanel WITH Elevator:currentFloor
 
-            INCREMENT this:Elevator:currentFloor BY -1 UNTIL this:Elevator:currentFloor IS EQUAL TO floor
-            set direction and status
+        INCREMENT displayCounter BY 1
+
+    ENDFOR
+
+=====Sends elevator to floor====
+    SEQUENCE moveElevator USING initialFloor AND direction AND moveToFloor AND columnFloorsServed AND RETURNED Elevator
+
+        IF moveToFloor IS GREATER THAN columnFloorsServed highest floor THEN
+
+            INCREMENT Elevator:currentFloor BY 1 UNTIL Elevator:currentFloor IS EQUAL TO columnFloorsServed highest floor
+
+            SET this:Elevator:currentFloor TO columnFloorsServed highest floor
+
+        ELSE IF moveToFloor IS LESS THAN columnFloorsServed lowest floor THEN
+
+            INCREMENT Elevator:currentFloor BY -1 UNTIL Elevator:currentFloor IS EQUAL TO columnFloorsServed lowest floor
+
+            SET this:Elevator:currentFloor TO columnFloorsServed lowest floor
+
+        ELSE IF Elevator:currentFloor IS LESS THAN initialFloor OR moveToFloor THEN
+
+            INCREMENT Elevator:currentFloor BY 1 UNTIL Elevator:currentFloor IS EQUAL TO initialFloor OR moveToFloor
+
+            SET this:Elevator:currentFloor TO initialFloor OR moveToFloor
+
+        ELSE IF Elevator:currentFloor IS GREATER THAN InitialFloor OR moveToFloor THEN
+
+            INCREMENT Elevator:currentFloor BY -1 UNTIL Elevator:currentFloor IS EQUAL TO initialFloor OR moveToFloor
+
+            SET this:Elevator:currentFloor TO initialFloor OR moveToFloor
+
+        ENDIF
+
+        CALL changeDisplay WITH this:Elevator:currentFloor
+
+        CALL Elevator:elevatorDoors:Doors:openDoor WITH Elevator:elevatorDoors
+
+        SET Elevator:elevatorDirection TO up
+
+        SET Elevator:elevatorStatus TO moving
+
     ENDSEQUENCE
 
 ENDDEFINE
 
-=====Defines Buttons Contained In Elevator Panel=====
-DEFINE ElevataorPanelButton USING floorCounter AND buttonDoorStatus AND elevatorCounter AND basementCounter
+=====Defines buttons contained in elevator Panel===
+DEFINE ElevatorPanelButton USING floorCounter AND buttonDoorStatus AND elevatorCounter AND basementCounter
 
     IF requestBasement THEN
 
@@ -250,8 +397,6 @@ DEFINE ElevataorPanelButton USING floorCounter AND buttonDoorStatus AND elevator
 
     ENDIF
 
-ENDDEFINE
-
 =====Defines Door Elements=====
 DEFINE Doors
 
@@ -260,23 +405,36 @@ DEFINE Doors
     =====Close door=====
     SEQUENCE closeDoor USING Elevator:elevatorButtonsList AND Elevator:elevatorDoors
  
-        IF ElevataorPanelButton:closeDoors is pressed AND elevatorDoors:Doors:state are clear of any obstructions THEN
+        IF Elevator:elevatorButtonsList:closeDoors is pressed AND Elevator:elevatorDoors:Doors:state are clear of any obstructions THEN
  
-            SET Doors:state TO closed
+            SET state TO closed
  
         ELSE
  
-            After 3 seconds AND elevatorDoors:Doors:state are clear of any obstructions, SET elevatorDoors:Doors:state TO closed
+            After 3 seconds AND Elevator:elevatorDoors:Doors:state are clear of any obstructions, SET Elevator:elevatorDoors:Doors:state TO closed
  
         ENDIF
  
     ENDSEQUENCE
 
 =====Open door=====
-    SEQUENCE openDoor USING Elevator:elevatorDoors:Doors
+    SEQUENCE openDoor USING Elevator:elevatorDoors
  
-        SET elevatorDoors:Doors:state TO open
+        SET Elevator:elevatorDoors:Doors:state TO open
  
     ENDSEQUENCE
+
+ENDDEFINE 
+
+=====Defines elevator display=====
+DEFINE ElevatorDisplayPanel USING Elevator:currentFloor
+
+    SET elevatorScreen TO Elevator:currentFloor
+
+    SEQUENCE changeDisplay USING Elevator:currentFloor
+
+        SET elevatorScreen TO Elevator:currentFloor
+
+    ENDSEQUENCE 
 
 ENDDEFINE
