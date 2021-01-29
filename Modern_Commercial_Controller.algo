@@ -352,19 +352,7 @@ ENDDEFINE
 =====Defines buttons contained in elevator Panel===
 DEFINE ElevatorPanelButton USING floorCounter AND buttonDoorStatus AND elevatorCounter AND basementCounter
 
-    IF requestBasement THEN
-
-        SET id TO requestBasement CONCAT basementCounter
-
-        SET basementRequested TO basementCounter
-    
-    ELSE IF requestFloor THEN
-
-        SET id TO requestFloor CONCAT floorCounter
-
-        SET floorRequested TO floorCounter
-
-    ELSE IF closeDoor THEN
+    IF closeDoor THEN
 
         SET id TO closeDoor CONCAT elevatorCounter
 

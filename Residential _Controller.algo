@@ -32,7 +32,7 @@ DEFINE ElevatorController USING initialFloor AND direction AND moveToFloor
 
 ENDDEFINE
 
-DEFINE Column USING elevatorsPerCOlumn AND numberOfFloors AND numberOfBasements AND floor AND direction
+DEFINE Column USING elevatorsPerColumn AND numberOfFloors AND numberOfBasements AND floor AND direction
 
     SET elevatorCounter TO 1
 

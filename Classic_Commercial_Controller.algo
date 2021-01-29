@@ -42,6 +42,7 @@ DEFINE Battery USING initialFloor AND moveToFloor AND direction
 
     SET columnList
 
+=====Creating columns=====
     FOR numberOfColumns
 
         SET column CONCAT columnCounter TO NEW INSTANCE OF Column WITH elevatorsPerColumn AND numberOfFloors AND numberOfBasements AND floor AND direction AND floorsServed
@@ -176,11 +177,7 @@ DEFINE Column USING elevatorsPerColumn AND numberOfFloors AND numberOfBasements 
 
             CALCULATE ABSOLUTE VALUE OF (Elevator:currentFloor MINUS initialFloor) AND SET TO Elevator:distance
 
-            IF initialFloor IS outside range OF columnFloorsServed THEN
-
-                //Do nothing, skip elevator as it does not serve requested floor
-
-            ELSE IF Elevator:distance EQUALS 0 AND Elevator:status IS idle THEN
+            IF Elevator:distance EQUALS 0 AND Elevator:status IS idle THEN
 
                 RETURN Elevator AS requiredElevator
 
